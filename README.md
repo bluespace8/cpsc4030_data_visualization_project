@@ -1,1 +1,3 @@
 # cpsc4030_data_visualization_project
+
+Our project explores patterns in consumer shopping behavior using an interactive dashboard built with d3. The main goal is to help a user quickly see who is spending money on e-commerce, how much they are spending, and what they are buying. We have a focus on interactive visualizations that allow the user to dive into different segments of customers and items.
