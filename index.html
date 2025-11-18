@@ -1,22 +1,30 @@
-
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8"/>
-    <title>Ceci n'est pas un document HTML</title>
-
+    <meta charset="UTF-8" />
+    <title>Shopping Behaviours Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
   </head>
   <body>
+    <h1>Shopping Behaviours Dashboard (Prototype)</h1>
 
-    <h1>Here is a graph</h1>
-
+    <h2>Graph 1 - Scatterplot (Age vs Purchase Amount)</h2>
     <div>
-      <svg id="graph1">
+      <svg id="graph1"></svg>
+    </div>
 
-      </svg>
+    <h2>Graph 2 - Bar Chart (Age Range vs Total Revenue)</h2>
+    <div>
+      <svg id="graph2"></svg>
+    </div>
+
+    <h2>Graph 3 - Bar Chart (Item Purchased vs Total Revenue)</h2>
+    <div>
+      <svg id="graph3"></svg>
     </div>
 
     <script src="graph1.js"></script>
+    <script src="graph2.js"></script>
+    <script src="graph3.js"></script>
   </body>
 </html>
