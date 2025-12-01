@@ -1,4 +1,5 @@
-//Bar Chart
+//Grouped Bar Chart
+//Tooltips
 var tooltip2 = d3.select("body").select("#tooltip");
 if (tooltip2.empty()) {
     tooltip2 = d3.select("body")
@@ -14,10 +15,12 @@ if (tooltip2.empty()) {
 }
 window.globalTooltip = tooltip2;
 
+//Global filter for
 if (!window.filterAgeRange) {
     window.filterAgeRange = null;
 }
 
+//Helper to bucket ages
 function ageRangeBucket(age) {
     if (age >= 18 && age <= 30) return "18-30";
     if (age >= 31 && age <= 43) return "31-43";
@@ -26,10 +29,9 @@ function ageRangeBucket(age) {
     return "Other";
 }
 
+//Load dataset
 d3.csv("shopping_behavior_updated.csv").then(
     function(dataset){
-
-        console.log(dataset)
 
         dataset.forEach(function(d){
             d.Age = +d.Age;
@@ -37,117 +39,193 @@ d3.csv("shopping_behavior_updated.csv").then(
             d.AgeRange = ageRangeBucket(d.Age);
         });
 
-        var dimensions = {
-            width: 1200,
-            height: 500,
-            margin:{
-                top: 40,
-                bottom: 80,
-                right: 40,
-                left: 120
-            }
-        }
-
-        var svg = d3.select("#graph2")
-                    .style("width", dimensions.width)
-                    .style("height", dimensions.height)
-
+        //Aggregate revenue
         var agg = d3.rollups(
-            dataset.filter(function(d){ return d.AgeRange !== "Other" }),
-            function(v){ return d3.sum(v, function(d){ return d.PurchaseAmount }) },
-            function(d){ return d.AgeRange }
+            dataset.filter(function(d){ return d.AgeRange !== "Other"; }),
+            function(v){ return d3.sum(v, function(d){ return d.PurchaseAmount; }); },
+            function(d){ return d.AgeRange; },
+            function(d){ return d.Gender; }
         );
 
-        var dataAgg = agg.map(function(d){
-            return { AgeRange: d[0], Revenue: d[1] };
+        var dataAgg = [];
+        agg.forEach(function(ageGroup){
+            var ageRange = ageGroup[0];
+            ageGroup[1].forEach(function(genderGroup){
+                dataAgg.push({
+                    AgeRange: ageRange,
+                    Gender: genderGroup[0],
+                    Revenue: genderGroup[1]
+                });
+            });
         });
 
+        //Sort
         var ageOrder = ["18-30","31-43","44-56","57-70"];
         dataAgg.sort(function(a,b){
-            return ageOrder.indexOf(a.AgeRange) - ageOrder.indexOf(b.AgeRange);
+            var ao = ageOrder.indexOf(a.AgeRange) - ageOrder.indexOf(b.AgeRange);
+            if (ao !== 0) return ao;
+            if (a.Gender < b.Gender) return -1;
+            if (a.Gender > b.Gender) return 1;
+            return 0;
         });
 
-        var xScale = d3.scaleBand()
-                       .domain(dataAgg.map(function(d){ return d.AgeRange }))
-                       .range([dimensions.margin.left ,dimensions.width - dimensions.margin.right])
-                       .padding([0.2])
+        //Ages from leat to greatest
+        var ages = ageOrder.filter(function(a){
+            return dataAgg.some(function(d){ return d.AgeRange === a; });
+        });
 
+        //Distinct genders
+        var genders = Array.from(new Set(dataAgg.map(function(d){ return d.Gender; })));
+
+        //Graph dimensions
+        var dimensions = {
+            width: 600,
+            height: 280,
+            margin:{
+                top: 30,
+                bottom: 50,
+                right: 20,
+                left: 80
+            }
+        };
+
+        //Create SVG
+        var svg = d3.select("#graph2")
+                    .attr("width", dimensions.width)
+                    .attr("height", dimensions.height);
+
+        //X-scale (age ranges)
+        var x0 = d3.scaleBand()
+                   .domain(ages)
+                   .range([dimensions.margin.left ,dimensions.width - dimensions.margin.right])
+                   .padding(0.2);
+
+        //X-scale (gender within each age range)
+        var x1 = d3.scaleBand()
+                   .domain(genders)
+                   .range([0, x0.bandwidth()])
+                   .padding(0.1);
+
+        //Y-scale
         var yScale = d3.scaleLinear()
-                       .domain([0, d3.max(dataAgg, function(d){ return d.Revenue })])
-                       .range([dimensions.height-dimensions.margin.bottom, dimensions.margin.top])
+                       .domain([0, d3.max(dataAgg, function(d){ return d.Revenue; })])
+                       .nice()
+                       .range([dimensions.height - dimensions.margin.bottom, dimensions.margin.top]);
 
-        var bars = svg.append("g")
-                      .selectAll("rect")
-                      .data(dataAgg)
-                      .enter()
-                      .append("rect")
-                      .attr("x", function(d){ return xScale(d.AgeRange) })
-                      .attr("y", function(d){ return yScale(d.Revenue) })
-                      .attr("height", function(d){ return yScale(0) - yScale(d.Revenue) })
-                      .attr("width", function(d){ return xScale.bandwidth() })
-                      .style("fill", "#1c7fc5ff")
-                      .on("mousemove", function(event, d){
-                          tooltip2
-                            .style("opacity", 1)
-                            .html(
-                                "<strong>Age Range:</strong> " + d.AgeRange + "<br/>" +
-                                "<strong>Total Revenue:</strong> $" + d.Revenue.toFixed(2)
-                            )
-                            .style("left", (event.pageX + 10) + "px")
-                            .style("top", (event.pageY + 10) + "px");
-                      })
-                      .on("mouseleave", function(){
-                          tooltip2.style("opacity", 0);
-                      })
-                      .on("click", function(event, d){
-                          if (window.filterAgeRange === d.AgeRange) {
-                              window.filterAgeRange = null;
-                          } else {
-                              window.filterAgeRange = d.AgeRange;
-                          }
+        //Color scale
+        var color = d3.scaleOrdinal()
+                      .domain(genders)
+                      .range(["#e84aa9ff", "#3299e7ff"]);
 
-                          bars
-                            .style("stroke", null)
-                            .style("stroke-width", null);
+        //Group container for each age range
+        var groups = svg.append("g")
+                        .selectAll("g")
+                        .data(ages)
+                        .enter()
+                        .append("g")
+                        .attr("transform", function(d){ return "translate(" + x0(d) + ",0)"; });
 
-                          if (window.filterAgeRange) {
-                              bars
-                                .filter(function(b){ return b.AgeRange === window.filterAgeRange })
-                                .style("stroke", "black")
-                                .style("stroke-width", 2);
-                          }
+        //Bars for each gender within its age group
+        var bars = groups.selectAll("rect")
+                         .data(function(age){
+                             return dataAgg.filter(function(d){ return d.AgeRange === age; });
+                         })
+                         .enter()
+                         .append("rect")
+                         .attr("x", function(d){ return x1(d.Gender); })
+                         .attr("y", function(d){ return yScale(d.Revenue); })
+                         .attr("height", function(d){ return yScale(0) - yScale(d.Revenue); })
+                         .attr("width", x1.bandwidth())
+                         .style("fill", function(d){ return color(d.Gender); })
+                         .on("mousemove", function(event, d){
+                             tooltip2
+                               .style("opacity", 1)
+                               .html(
+                                   "<strong>Age Range:</strong> " + d.AgeRange + "<br/>" +
+                                   "<strong>Gender:</strong> " + d.Gender + "<br/>" +
+                                   "<strong>Total Revenue:</strong> $" + d.Revenue.toFixed(2)
+                               )
+                               .style("left", (event.pageX + 10) + "px")
+                               .style("top", (event.pageY + 10) + "px");
+                         })
+                         .on("mouseleave", function(){
+                             tooltip2.style("opacity", 0);
+                         })
+                         .on("click", function(event, d){
+                             //Toggle filter
+                             if (window.filterAgeRange === d.AgeRange) {
+                                 window.filterAgeRange = null;
+                             } else {
+                                 window.filterAgeRange = d.AgeRange;
+                             }
 
-                          if (window.updateScatter) {
-                              window.updateScatter();
-                          }
-                      });
+                             //Clear existing outlines
+                             bars
+                               .style("stroke", null)
+                               .style("stroke-width", null);
 
-        var xAxisGen = d3.axisBottom().scale(xScale)
+                             //Outline selected range
+                             if (window.filterAgeRange) {
+                                 bars
+                                   .filter(function(b){ return b.AgeRange === window.filterAgeRange; })
+                                   .style("stroke", "black")
+                                   .style("stroke-width", 2);
+                             }
+
+                             //Update scatterplot
+                             if (window.updateScatter) {
+                                 window.updateScatter();
+                             }
+                         });
+
+        //X-axis
+        var xAxisGen = d3.axisBottom().scale(x0);
         var xAxis = svg.append("g")
                        .call(xAxisGen)
-                       .style("transform", "translateY(" + (dimensions.height - dimensions.margin.bottom) + "px)")
-        xAxis.selectAll("text").style("font-size", "18px");
+                       .style("transform", "translateY(" + (dimensions.height - dimensions.margin.bottom) + "px)");
+        xAxis.selectAll("text").style("font-size", "12px");
 
-        var yAxisGen = d3.axisLeft().scale(yScale)
+        //Y-axis
+        var yAxisGen = d3.axisLeft().scale(yScale);
         var yAxis = svg.append("g")
                        .call(yAxisGen)
-                       .style("transform", "translateX(" + dimensions.margin.left + "px)")
-        yAxis.selectAll("text").style("font-size", "18px");
+                       .style("transform", "translateX(" + dimensions.margin.left + "px)");
+        yAxis.selectAll("text").style("font-size", "12px");
 
+        //X-axis title
         svg.append("text")
             .attr("x", dimensions.width / 2)
-            .attr("y", dimensions.height - dimensions.margin.bottom + 50)
+            .attr("y", dimensions.height - 5)
             .attr("text-anchor", "middle")
-            .style("font-size", "18px")
+            .style("font-size", "14px")
             .text("Age Range");
 
+        //Y-axis title
         svg.append("text")
             .attr("transform", "rotate(-90)")
             .attr("x", -(dimensions.height / 2))
-            .attr("y", dimensions.margin.left - 90)
+            .attr("y", 18)
             .attr("text-anchor", "middle")
-            .style("font-size", "18px")
+            .style("font-size", "14px")
             .text("Total Revenue (USD)");
 
+        //Legend
+        var legend = svg.append("g")
+                        .attr("transform", "translate(" + (dimensions.width - dimensions.margin.right - 120) + "," + (dimensions.margin.top - 15) + ")");
+
+        genders.forEach(function(g, i){
+            var row = legend.append("g")
+                            .attr("transform", "translate(0," + (i * 18) + ")");
+            row.append("rect")
+               .attr("width", 12)
+               .attr("height", 12)
+               .attr("fill", color(g));
+            row.append("text")
+               .attr("x", 18)
+               .attr("y", 10)
+               .style("font-size", "12px")
+               .text(g);
+        });
+
     }
-)
+);
