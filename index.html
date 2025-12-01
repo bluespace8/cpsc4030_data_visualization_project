@@ -4,23 +4,73 @@
     <meta charset="UTF-8" />
     <title>Shopping Behaviours Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+      /* Some help from ChatGPT for the style numbers */
+      body {
+        font-family: sans-serif;
+        margin: 16px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 24px;
+      }
+
+      h2 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+        text-align: center;
+      }
+
+      .row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .panel {
+        flex: 1;
+        border: 1px solid #ddd;
+        background: #fff;
+        padding: 8px 8px 4px 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+
+      .row-bottom {
+        justify-content: center;
+      }
+
+      .panel-bottom {
+        max-width: 1100px;
+        width: 100%;
+      }
+
+      svg {
+        display: block;
+      }
+    </style>
   </head>
+
   <body>
-    <h1>Shopping Behaviours Dashboard (Prototype)</h1>
+    <h1>Shopping Behaviours Dashboard</h1>
 
-    <h2>Graph 1 - Scatterplot (Age vs Purchase Amount)</h2>
-    <div>
-      <svg id="graph1"></svg>
+    <div class="row">
+      <section class="panel">
+        <h2>Graph 1 - Age vs Purchase Amount</h2>
+        <svg id="graph1"></svg>
+      </section>
+
+      <section class="panel">
+        <h2>Graph 2 - Age vs Gender Revenue</h2>
+        <svg id="graph2"></svg>
+      </section>
     </div>
 
-    <h2>Graph 2 - Bar Chart (Age Range vs Total Revenue)</h2>
-    <div>
-      <svg id="graph2"></svg>
-    </div>
-
-    <h2>Graph 3 - Bar Chart (Item Purchased vs Total Revenue)</h2>
-    <div>
-      <svg id="graph3"></svg>
+    <div class="row row-bottom">
+      <section class="panel panel-bottom">
+        <h2>Graph 3 - Item vs Revenue</h2>
+        <svg id="graph3"></svg>
+      </section>
     </div>
 
     <script src="graph1.js"></script>
