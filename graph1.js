@@ -1,4 +1,5 @@
-//Scatter plot
+//Scatterplot
+//Allows global filters
 if (!window.filterAgeRange) {
     window.filterAgeRange = null;
 }
@@ -6,6 +7,7 @@ if (!window.filterItem) {
     window.filterItem = null;
 }
 
+//Tooltip creation
 var tooltip = d3.select("body").select("#tooltip");
 if (tooltip.empty()) {
     tooltip = d3.select("body")
@@ -21,6 +23,7 @@ if (tooltip.empty()) {
 }
 window.globalTooltip = tooltip;
 
+//Ages to buckets
 function ageRangeBucketGraph1(age) {
     if (age >= 18 && age <= 30) return "18-30";
     if (age >= 31 && age <= 43) return "31-43";
@@ -29,70 +32,85 @@ function ageRangeBucketGraph1(age) {
     return;
 }
 
+//Load dataset
 d3.csv("shopping_behavior_updated.csv").then(function(dataset){
-    console.log(dataset)
+
     dataset.forEach(function(d, i){
         d.Age = +d.Age;
         d.PurchaseAmount = +d["Purchase Amount (USD)"];
         d.__id = i;
     });
 
+    //Graph dimensions
     var dimensions = {
-        width: 1200,
-        height: 600,
+        width: 600,
+        height: 280,
         margin: {
-            top: 40,
-            right: 40,
+            top: 30,
+            right: 20,
             bottom: 60,
-            left: 80
+            left: 90
         }
-    }
+    };
 
-    var xAccessor = function(d){ return d.Age }
-    var yAccessor = function(d){ return d.PurchaseAmount }
+    //Accessors for x and y values
+    var xAccessor = function(d){ return d.Age; };
+    var yAccessor = function(d){ return d.PurchaseAmount; };
 
+    //Min/max values for axes
+    var xExtent = d3.extent(dataset, xAccessor);
+    var yExtent = d3.extent(dataset, yAccessor);
+
+    //Scales
     var xScale = d3.scaleLinear()
-                    .domain(d3.extent(dataset, xAccessor))
-                    .range([dimensions.margin.left, dimensions.width - dimensions.margin.right])
+               .domain(xExtent)
+               .range([dimensions.margin.left, dimensions.width - dimensions.margin.right]);
 
     var yScale = d3.scaleLinear()
-                    .domain(d3.extent(dataset, yAccessor))
-                    .range([dimensions.height - dimensions.margin.bottom, dimensions.margin.top])
+               .domain(yExtent)
+               .range([dimensions.height - dimensions.margin.bottom, dimensions.margin.top]);
 
+
+    //Create SVG
     var svg = d3.select("#graph1")
-                .style("width", dimensions.width)
-                .style("height", dimensions.height)
+                .attr("width", dimensions.width)
+                .attr("height", dimensions.height);
 
-    var xAxisGen = d3.axisBottom().scale(xScale)
+    //X-axis
+    var xAxisGen = d3.axisBottom().scale(xScale);
     var xAxis = svg.append("g")
-                    .call(xAxisGen)
-                    .style("transform", "translateY(" + (dimensions.height - dimensions.margin.bottom) + "px)")
-    xAxis.selectAll("text").style("font-size", "18px");
+                   .call(xAxisGen)
+                   .style("transform", "translateY(" + (dimensions.height - dimensions.margin.bottom) + "px)");
+    xAxis.selectAll("text").style("font-size", "12px");
 
-    var yAxisGen = d3.axisLeft().scale(yScale)
+    //Y-axis
+    var yAxisGen = d3.axisLeft().scale(yScale);
     var yAxis = svg.append("g")
-                    .call(yAxisGen)
-                    .style("transform", "translateX(" + dimensions.margin.left + "px)")
-    yAxis.selectAll("text").style("font-size", "18px");
+                   .call(yAxisGen)
+                   .style("transform", "translateX(" + dimensions.margin.left + "px)");
+    yAxis.selectAll("text").style("font-size", "12px");
 
+    //X-axis title
     svg.append("text")
         .attr("x", (dimensions.width / 2))
-        .attr("y", dimensions.height - 15)
+        .attr("y", dimensions.height - 10)
         .attr("text-anchor", "middle")
-        .style("font-size", "18px")
+        .style("font-size", "14px")
         .text("Age");
 
+    //Y-axis title
     svg.append("text")
         .attr("transform", "rotate(-90)")
         .attr("x", -(dimensions.height / 2))
-        .attr("y", 20)
+        .attr("y", 35)
         .attr("text-anchor", "middle")
-        .style("font-size", "18px")
+        .style("font-size", "14px")
         .text("Purchase Amount (USD)");
 
+    //Holds the points
+    var dotsGroup = svg.append("g");
 
-    var dotsGroup = svg.append("g")
-
+    //Applies filters from interaction
     function getFilteredData(){
         return dataset.filter(function(d){
             var ageOk = !window.filterAgeRange ||
@@ -103,27 +121,48 @@ d3.csv("shopping_behavior_updated.csv").then(function(dataset){
         });
     }
 
+    //Main update function
     window.updateScatter = function(){
 
         var filtered = getFilteredData();
 
+        //Clear points for filters
+        if (!filtered.length) {
+            dotsGroup.selectAll("circle").remove();
+            return;
+        }
+
+        //Anti-collision
+        var simulation = d3.forceSimulation(filtered)
+            .force("x", d3.forceX(function(d){ return xScale(xAccessor(d)); }).strength(0.4))
+            .force("y", d3.forceY(function(d){ return yScale(yAccessor(d)); }).strength(0.4))
+            .force("collide", d3.forceCollide(3.5))
+            .stop();
+
+        //Run simulation
+        for (var i = 0; i < 100; i++) {
+            simulation.tick();
+        }
+
+        //D3 data join for the points
         var dots = dotsGroup
                     .selectAll("circle")
-                    .data(filtered, function(d){ return d.__id })
+                    .data(filtered, function(d){ return d.__id; });
 
+        //Handling for the points
         dots.join(
             function(enter){
                 return enter
                         .append("circle")
-                        .attr("cx", function(d){ return xScale(xAccessor(d)) })
-                        .attr("cy", function(d){ return yScale(yAccessor(d)) })
-                        .attr("r", 3)
+                        .attr("cx", function(d){ return d.x; })
+                        .attr("cy", function(d){ return d.y; })
+                        .attr("r", 2.5)
                         .style("fill", function(d){
-                            if (d.Gender === "Male") return "#195ae6ff";
-                            if (d.Gender === "Female") return "#ff0e0eff";
+                            if (d.Gender === "Male") return "#3299e7ff";
+                            if (d.Gender === "Female") return "#e84aa9ff";
                             return "gray";
                         })
-                        .style("opacity", 0.4)
+                        .style("opacity", 0.25)
                         .on("mousemove", function(event, d){
                             tooltip
                                 .style("opacity", 1)
@@ -144,15 +183,15 @@ d3.csv("shopping_behavior_updated.csv").then(function(dataset){
             },
             function(update){
                 return update
-                        .attr("cx", function(d){ return xScale(xAccessor(d)) })
-                        .attr("cy", function(d){ return yScale(yAccessor(d)) });
+                        .attr("cx", function(d){ return d.x; })
+                        .attr("cy", function(d){ return d.y; });
             },
             function(exit){
                 return exit.remove();
             }
         );
-    }
+    };
 
+    //Render
     window.updateScatter();
-
-})
+});
