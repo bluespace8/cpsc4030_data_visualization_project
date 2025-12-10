@@ -36,12 +36,12 @@
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       }
 
-      .row-bottom {
+      .row-top {
         justify-content: center;
       }
 
-      .panel-bottom {
-        max-width: 1100px;
+      .panel-top {
+        max-width: 1400px;
         width: 100%;
       }
 
@@ -54,21 +54,21 @@
   <body>
     <h1>Shopping Behaviors Dashboard</h1>
 
-    <div class="row">
-      <section class="panel">
+    <div class="row row-top">
+      <section class="panel panel-top">
         <h2>Graph 1 - Age vs Purchase Amount</h2>
         <svg id="graph1"></svg>
       </section>
+
+    </div>
+    <div class="row">
 
       <section class="panel">
         <h2>Graph 2 - Age vs Gender Revenue</h2>
         <svg id="graph2"></svg>
       </section>
-    </div>
-
-    <div class="row row-bottom">
-      <section class="panel panel-bottom">
-        <h2>Graph 3 - Item vs Revenue</h2>
+      <section class="panel">
+         <h2>Graph 3 - Item vs Revenue</h2>
         <svg id="graph3"></svg>
       </section>
     </div>
