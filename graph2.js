@@ -79,7 +79,7 @@ d3.csv("shopping_behavior_updated.csv").then(
 
         //Graph dimensions
         var dimensions = {
-            width: 600,
+            width: 480,
             height: 280,
             margin:{
                 top: 30,
